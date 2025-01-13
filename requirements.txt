@@ -1,0 +1,8 @@
+streamlit
+boto3
+pillow
+opencv-python
+langchain
+awscli
+deep-translator
+anthropic
