@@ -3,6 +3,9 @@ boto3
 pillow
 opencv-python
 langchain
+langchain-aws
 awscli
 deep-translator
 anthropic
+pypdf
+sentence-transformers

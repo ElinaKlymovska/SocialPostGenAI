@@ -1,84 +1,76 @@
+import os
 import streamlit as st
-from prepare_prompt import LANGUAGE_CODES, prepare_prompt, Tone
-from utils import get_rekognition_client, converse_with_titan
-from PIL import Image
+from io import BytesIO
+from pypdf import PdfReader
+from utils import process_uploaded_image, converse_with_titan
+from prepare_prompt import prepare_prompt
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# Налаштування AWS Rekognition клієнта
-rekognition = get_rekognition_client()
+# Configuration
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
 
-# Збереження історії розмови
-if "conversation_history" not in st.session_state:
-    st.session_state.conversation_history = []
+# App title
+st.title("AI for Social Media Content Creation")
 
-# Заголовок додатка
-st.title("AI Social Media Post Generator with Correction")
-st.subheader("Генерація та корекція контенту для соціальних мереж")
+# Variables to store extracted data
+image_labels = []
+file_content = ""
 
-# Вибір мови
-language = st.selectbox("Оберіть мову тексту:", list(LANGUAGE_CODES.keys()))
-
-# Вибір тональності
-tone = st.selectbox("Оберіть тональність:", [tone.name.capitalize() for tone in Tone])  # Виводимо назви з великої літери
-tone_value = Tone[tone.upper()]  # Приводимо текст до верхнього регістру для enum
-
-# Поле для введення ключових слів
-custom_keywords = st.text_input("Введіть власні ключові слова (через кому):")
-
-# Завантаження зображення
-uploaded_file = st.file_uploader("Завантажте зображення", type=["jpg", "png", "jpeg"])
-
-if uploaded_file:
-    # Відображення завантаженого зображення
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Завантажене зображення", use_container_width=True)
-
-    # Розпізнавання об'єктів
-    st.write("Розпізнавання об'єктів...")
-    response = rekognition.detect_labels(
-        Image={'Bytes': uploaded_file.getvalue()},
-        MaxLabels=5,
-        MinConfidence=75
+# Sidebar for file upload
+with st.sidebar:
+    st.header("Upload Files")
+    uploaded_files = st.file_uploader(
+        "Upload text or image files",
+        type=["txt", "pdf", "png", "jpg"],
+        accept_multiple_files=True
     )
 
-    # Отримання об'єктів
-    labels = [label['Name'] for label in response['Labels']]
-    st.write("Ідентифіковані об'єкти:", ", ".join(labels))
+    if uploaded_files:
+        for file in uploaded_files:
+            if file.type.startswith("image/"):
+                # Process image to extract labels
+                labels = process_uploaded_image(file)
+                image_labels.extend(labels)
+                st.success(f"Identified objects from {file.name}: {', '.join(labels)}")
+            elif file.type in ["application/pdf", "text/plain"]:
+                # Process text files to extract content
+                content = ""
+                if file.type == "application/pdf":
+                    pdf_reader = PdfReader(BytesIO(file.read()))
+                    content = "\n".join(page.extract_text() for page in pdf_reader.pages)
+                else:
+                    content = file.read().decode()
+                file_content += f" {content.strip()} "
+                st.success(f"Extracted content from {file.name}")
 
-    # Об'єднання ключових слів
-    keywords = labels + (custom_keywords.split(",") if custom_keywords else [])
+# Language and tone selection
+language = st.selectbox("Select language:", ["en", "uk"])
+tone = st.selectbox("Select tone:", ["friendly", "formal", "creative"])
 
-    if keywords:
-        # Формування промпту
-        prompt, translated_keywords = prepare_prompt(keywords, tone_value, language)
+# Input keywords for social media content
+keywords = st.text_input("Enter keywords that describe your content:")
 
-        # Відправлення промпту до Bedrock
-        st.write("Згенерований промпт:", prompt)
-        print("Generated prompt:", prompt)
+# Generate text button
+if st.button("Generate Text"):
+    if keywords or image_labels or file_content:
+        # Prepare prompt using all extracted data
+        prompt = prepare_prompt(
+            keywords.split(","),
+            tone,
+            language,
+            image_labels=image_labels,
+            file_content=file_content
+        )
 
-        if st.button("Генерувати текст"):
-            generated_text, st.session_state.conversation_history = converse_with_titan(
-                user_message=prompt,
-                conversation_history=st.session_state.conversation_history,
-            )
-            st.session_state.generated_text = generated_text
+        # Generate response using Bedrock
+        response, _ = converse_with_titan(prompt, [])
 
-        # Виведення та редагування тексту
-        if "generated_text" in st.session_state:
-            st.text_area(
-                "Згенерований текст:",
-                value=st.session_state.generated_text,
-                height=150,
-                key="editable_text",
-            )
+        # Display results
+        st.text_area("Generated Text:", value=response, height=200)
 
-        # Надіслати відредагований текст
-        if st.button("Доопрацювати текст"):
-            user_edited_text = st.session_state.editable_text
-            updated_text, st.session_state.conversation_history = converse_with_titan(
-                user_message=user_edited_text,
-                conversation_history=st.session_state.conversation_history,
-            )
-            st.session_state.generated_text = updated_text
-            st.success("Текст успішно оновлено!")
-else:
-    st.info("Будь ласка, завантажте зображення для початку.")
+        # Debugging information (optional)
+        st.write("### Debugging Info:")
+        st.write(f"Prompt: {prompt}")
+    else:
+        st.warning("Please provide keywords, upload files, or upload images to generate content.")
