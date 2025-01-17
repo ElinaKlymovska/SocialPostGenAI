@@ -1,12 +1,14 @@
 from deep_translator import GoogleTranslator
 
+from utils import process_uploaded_image
+
 LANGUAGE_CODES = {
     "en": "en",
     "uk": "uk",
 }
 
 
-def prepare_prompt(keywords, tone, language, image_labels=None, file_content=None):
+def prepare_prompt(keywords, tone, language, uploaded_files=None):
     """
     Підготовка промпту для генерації тексту із врахуванням мови, тональності, ключових слів,
     об'єктів із зображень та вмісту текстових файлів.
@@ -14,8 +16,7 @@ def prepare_prompt(keywords, tone, language, image_labels=None, file_content=Non
     :param keywords: Список ключових слів.
     :param tone: Тональність тексту.
     :param language: Обрана мова.
-    :param image_labels: Об'єкти, знайдені в зображеннях (список).
-    :param file_content: Вміст текстових файлів (рядок).
+    :param uploaded_files: Вміст текстових файлів (рядок) або Об'єкти, знайдені в зображеннях (список).
     :return: Підготовлений промпт.
     """
     # Переклад ключових слів
@@ -23,6 +24,17 @@ def prepare_prompt(keywords, tone, language, image_labels=None, file_content=Non
         GoogleTranslator(source="auto", target=LANGUAGE_CODES["en"]).translate(word.strip())
         for word in keywords
     ]
+
+    # Process uploaded files
+    image_labels = []
+    file_content = ""
+    if uploaded_files:
+        for file in uploaded_files:
+            if file.type.startswith("image/"):
+                labels = process_uploaded_image(file)
+                image_labels.extend(labels)
+            else:
+                file_content += file.read().decode()
 
     # Додавання об'єктів із зображень
     if image_labels:

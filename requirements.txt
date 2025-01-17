@@ -9,3 +9,4 @@ deep-translator
 anthropic
 pypdf
 sentence-transformers
+chromadb
