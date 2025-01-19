@@ -1,7 +1,37 @@
-__pycache__/
-*.pyc
-.DS_Store
-env/
+# Logs and databases
+*.log
+*.sqlite
+
+# Environment variables
 .env
 .aws
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.DS_Store
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual Environment
+venv/
+env/
+.env/
+
+# IDE
+.vscode/
 .idea/
+
+# Streamlit
+.streamlit/
+
+# ChromaDB
+chroma_db/
+
+# Database
+db/
