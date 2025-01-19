@@ -43,11 +43,14 @@ def process_files(uploaded_files):
         tuple: Ключові слова із зображень та текстовий контекст із файлів.
     """
     image_labels = []
-    file_context = ""
+    file_context = ""  # Ініціалізація змінної
 
     for file in uploaded_files:
         if file.name not in st.session_state.processed_files:
             with st.spinner(f"Processing {file.name}..."):
+                # Ініціалізація file_content для кожного файлу
+                file_content = ""
+
                 if file.type.startswith("image/"):
                     # Обробка зображень
                     image_labels.extend(process_uploaded_image(file))
@@ -55,8 +58,8 @@ def process_files(uploaded_files):
                     # Обробка PDF-файлів
                     pdf_reader = PdfReader(BytesIO(file.read()))
                     file_content = "\n".join(page.extract_text() for page in pdf_reader.pages)
-                else:
-                    # Обробка інших текстових файлів
+                elif file.type.startswith("text/") or file.type == "text/plain":
+                    # Обробка текстових файлів
                     file_content = file.read().decode()
 
                 # Якщо контент отримано, додаємо його до vectorstore
