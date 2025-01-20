@@ -5,62 +5,68 @@ from utils.session_state.session_state_init import init_session_state, reset_ses
 from utils.toucher_llm_model import converse_with_titan
 
 
-def display_app_header():
+def display_app_sidebar():
     """
-    Відображає заголовок і опис додатку.
+    Відображає заголовок і опис додатку в боковій панелі.
     """
-    st.title("AI-powered Content Generator")
-    st.markdown("""
-    This AI assistant can:
-    - Generate engaging and creative social media content tailored to your needs
-    - Provide suggestions for captions, hashtags, and post formats
-    - Analyze uploaded images or text to create relevant and appealing content
-    - Maintain context across the conversation to ensure consistent branding and tone
-    - Help brainstorm ideas for posts, campaigns, and creative strategies
-    """)
+    with st.sidebar:
+        st.title("AI-powered Content Generator")
+        st.markdown("""
+        This AI assistant can:
+        - Generate engaging and creative social media content tailored to your needs
+        - Provide suggestions for captions, hashtags, and post formats
+        - Analyze uploaded images or text to create relevant and appealing content
+        - Maintain context across the conversation to ensure consistent branding and tone
+        - Help brainstorm ideas for posts, campaigns, and creative strategies
+        """)
 
+
+def display_main_interface():
+    """
+    Відображає основний функціонал посередині екрана.
+    """
+    st.header("Set Parameters and Generate Content")
+
+    # Завантаження файлів
+    uploaded_files = st.file_uploader(
+        "Upload text or image files",
+        type=["txt", "pdf", "png", "jpg"],
+        accept_multiple_files=True
+    )
+    # Налаштування параметрів
+    keywords = st.text_input("Enter keywords:")
+    language = st.selectbox("Select language:", ["en", "uk"])
+    tone = st.selectbox("Select tone:", ["friendly", "formal", "creative"])
+
+    # Кнопка для генерації контенту
+    if st.button("Generate Content"):
+        if keywords.strip():
+            prompt = prepare_prompt(keywords.split(","), tone, language, uploaded_files)
+            response, _ = converse_with_titan(prompt, [])
+            display_generated_text(response)
+        else:
+            st.warning("Please enter some keywords to generate content.")
+
+    # Кнопка для очищення історії чату
+    if st.button("Clear Chat History"):
+        reset_session_state()
 
 def display_generated_text(response):
     """
-    Відображає згенерований текст посередині екрану.
+    Відображає згенерований текст посередині екрана.
 
     Args:
         response (str): Згенерований текст.
     """
-    with st.container():
-        st.subheader("Generated Content")
-        st.markdown(
-            f"""
-            <div style="text-align: center; font-size: 18px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                {response}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-def display_sidebar():
-    """
-    Відображає параметри в боковій панелі для налаштування генерації контенту.
-    """
-    with st.sidebar:
-        st.header("Set parameters:")
-        uploaded_files = st.file_uploader(
-            "Upload text or image files",
-            type=["txt", "pdf", "png", "jpg"],
-            accept_multiple_files=True
-        )
-        keywords = st.text_input("Enter keywords:")
-        language = st.selectbox("Select language:", ["en", "uk"])
-        tone = st.selectbox("Select tone:", ["friendly", "formal", "creative"])
-
-        if st.button("Generate Content"):
-            prompt = prepare_prompt(keywords.split(","), tone, language, uploaded_files)
-            response, _ = converse_with_titan(prompt, [])
-            display_generated_text(response)
-
-        if st.button("Clear Chat History"):
-            reset_session_state()
-
+    st.subheader("Generated Content")
+    st.markdown(
+        f"""
+        <div style="text-align: center; font-size: 18px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            {response}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 def display_chat_interface():
     """
@@ -122,9 +128,14 @@ def handle_user_input(question):
         st.error(f"Error: {str(e)}")
 
 
-# Головна логіка
 if __name__ == "__main__":
     init_session_state()
-    display_app_header()
-    display_sidebar()
+
+    # Відображення бокової панелі
+    display_app_sidebar()
+
+    # Основний функціонал посередині
+    display_main_interface()
+
+    # Інтерфейс чату (опціонально)
     display_chat_interface()
