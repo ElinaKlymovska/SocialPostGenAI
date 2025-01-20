@@ -10,3 +10,5 @@ anthropic
 pypdf
 sentence-transformers
 chromadb
+
+python-telegram-bot
